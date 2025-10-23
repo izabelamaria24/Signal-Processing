@@ -1,53 +1,23 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+from signal_processing_core import SignalToolkit
+
 
 class TransformataFourier:
-    def __init__(self, output_dir='charts'):
-        self.output_dir = output_dir
-        if not os.path.exists(self.output_dir):
-            os.makedirs(self.output_dir)
-
-    def _salveaza_grafic(self, fig_name):
-        plt.savefig(f"{self.output_dir}/{fig_name}.png")
-        plt.savefig(f"{self.output_dir}/{fig_name}.pdf")
+    def __init__(self):
+        self.tool = SignalToolkit()
 
     def rezolva_exercitiul_1(self, N=20):
-        n = np.arange(N)
-        k = n.reshape((N, 1))
-        e = np.exp(-2j * np.pi * k * n / N)
-        matrice_fourier = e
+        F = self.tool.create_fourier_matrix(N)
+        # use toolkit to plot and save the Fourier matrix rows
+        self.tool.plot_fourier_matrix(F, lab_name='Lab3')
 
-        fig, axs = plt.subplots(N, 2, figsize=(12, 16))
-        fig.suptitle(f'Liniile Matricei Fourier (N={N})', fontsize=16)
-
-        for i in range(N):
-            axs[i, 0].plot(matrice_fourier[i].real)
-            axs[i, 0].set_ylabel(f'Linia {i} Real')
-            axs[i, 0].grid(True)
-
-            axs[i, 1].plot(matrice_fourier[i].imag)
-            axs[i, 1].set_ylabel(f'Linia {i} Imaginar')
-            axs[i, 1].grid(True)
-
-        axs[N - 1, 0].set_xlabel('Eșantion (n)')
-        axs[N - 1, 1].set_xlabel('Eșantion (n)')
-        plt.tight_layout(rect=[0, 0.03, 1, 0.96])
-        self._salveaza_grafic('exercitiul_1_matrice_fourier')
-        plt.show()
-
-        matrice_conjugata_transpusa = matrice_fourier.conj().T
-        produs = np.dot(matrice_conjugata_transpusa, matrice_fourier)
+        # verify unitary property
+        produs = F.conj().T.dot(F)
         matrice_identitate_N = N * np.identity(N)
-
         este_unitara = np.allclose(produs, matrice_identitate_N)
-
         print(f"Verificare unitaritate (F^H * F == N * I): {este_unitara}")
-        if not este_unitara:
-            print("Matricea produs:")
-            print(produs)
-            print("Matricea N * I:")
-            print(matrice_identitate_N)
 
 
     def rezolva_exercitiul_2(self):
@@ -56,43 +26,38 @@ class TransformataFourier:
         N_esantioane = int(fs * T)
         t = np.linspace(0, T, N_esantioane, endpoint=False)
         f_semnal = 7
+        # use toolkit to generate and plot
+        t, x = self.tool.generate_signal(self.tool.SignalType.SINE, freq=f_semnal, duration=T, sampling_freq=fs)
+        fig1, ax = plt.subplots(1, 1, figsize=(8, 4))
+        ax.plot(t, x)
+        ax.set_title('Semnal Sinusoidal în Domeniul Timp')
+        ax.set_xlabel('Timp (s)')
+        ax.set_ylabel('Amplitudine')
+        ax.grid(True)
 
-        x = np.sin(2 * np.pi * f_semnal * t)
-
-        fig1, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-        fig1.suptitle(f'Figura 1: Reprezentarea unui semnal de {f_semnal}Hz', fontsize=16)
-
-        ax1.plot(t, x)
-        ax1.set_title('Semnal Sinusoidal în Domeniul Timp')
-        ax1.set_xlabel('Timp (s)')
-        ax1.set_ylabel('Amplitudine')
-        ax1.grid(True)
-
+        # complex plane scatter
         y = x * np.exp(-2j * np.pi * f_semnal * t)
-
         distanta = np.abs(x)
+        fig_complex, ax2 = plt.subplots(1, 1, figsize=(6, 6))
         scatter = ax2.scatter(y.real, y.imag, c=distanta, cmap='viridis')
-        ax2.set_title('Reprezentare în Planul Complex (Înfășurare la f_semnal)')
-        ax2.set_xlabel('Partea Reală')
-        ax2.set_ylabel('Partea Imaginară')
+        ax2.set_title('Planul Complex')
+        ax2.set_xlabel('Partea Reala')
+        ax2.set_ylabel('Partea Imaginara')
         ax2.axis('equal')
         ax2.grid(True)
-        fig1.colorbar(scatter, ax=ax2, label='Distanța de la origine (|x[n]|)')
-
-        plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-        self._salveaza_grafic('exercitiul_2_figura_1')
-        plt.show()
+        fig_complex.colorbar(scatter, ax=ax2, label='Distanta de la origine (|x[n]|)')
+        self.tool.save_figure(fig1, 'exercitiul_2_figura_1_time', lab_name='Lab3')
+        self.tool.save_figure(fig_complex, 'exercitiul_2_figura_1_complex', lab_name='Lab3')
 
         frecvente_infasurare = [2, 5, f_semnal, 15]
 
         fig2, axs = plt.subplots(2, 2, figsize=(10, 10))
-        fig2.suptitle(f'Figura 2: Influența Frecvenței de Înfășurare (ω) pentru un semnal de {f_semnal}Hz', fontsize=16)
+        fig2.suptitle(f'Frecventa de infasurare (ω) pentru un semnal de {f_semnal}Hz', fontsize=16)
 
         for i, omega in enumerate(frecvente_infasurare):
             ax = axs.flatten()[i]
             z = x * np.exp(-2j * np.pi * omega * t)
             distanta_z = np.abs(x)
-
             scatter = ax.scatter(z.real, z.imag, c=distanta_z, cmap='plasma', s=10)
             ax.set_title(f'ω = {omega} Hz')
             ax.set_xlabel('Partea Reală')
@@ -101,7 +66,7 @@ class TransformataFourier:
             ax.grid(True)
 
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-        self._salveaza_grafic('exercitiul_2_figura_2')
+        self.tool.save_figure(fig2, 'exercitiul_2_figura_2', lab_name='Lab3')
         plt.show()
 
     def _calculeaza_dft_manual(self, x, fs, N):
@@ -150,7 +115,7 @@ class TransformataFourier:
         ax2.set_xticks([f1, f2, f3])
 
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-        self._salveaza_grafic('exercitiul_3_figura_3')
+        self.tool.save_figure(fig, 'exercitiul_3_figura_3', lab_name='Lab3')
         plt.show()
 
     def ruleaza_toate_exercitiile(self):
@@ -160,6 +125,6 @@ class TransformataFourier:
 
 
 if __name__ == '__main__':
-    laborator = TransformataFourier(output_dir='rezultate_laborator_3')
+    laborator = TransformataFourier()
     laborator.ruleaza_toate_exercitiile()
 
