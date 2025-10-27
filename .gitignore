@@ -20,6 +20,7 @@ var/
 installdeps/
 pip-wheel-metadata/
 
+.venv/
 venv/
 env/
 ENV/
