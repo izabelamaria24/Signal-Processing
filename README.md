@@ -1,14 +1,3 @@
-# Signal-Processing
+# Signal Processing Labs
 
-This repository contains small lab scripts demonstrating signal generation, Fourier transforms and plotting. A central `SignalToolkit` in `signal_processing_core.py` provides unified APIs for generating signals, creating Fourier matrices, plotting, and saving figures.
-
-Quick start (Windows PowerShell):
-
-- Install dependencies (recommended in a virtualenv):
-
-```powershell
-pip install -r requirements.txt
-```
-
-Notes:
-- Generated charts are saved under `charts/<LabName>/` (PDF and PNG).
+This repository contains the coursework and solutions for a signal processing course. It includes Python scripts for demonstrating and solving problems related to Fourier analysis, sampling theory, spectrograms, and more.

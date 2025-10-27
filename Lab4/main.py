@@ -110,43 +110,42 @@ def solve_ex3(toolkit):
 
 
 def solve_ex6(toolkit):
-    audio_files = glob.glob('*.m4a')
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    m4a_pattern = os.path.join(script_dir, '*.m4a')
+    wav_pattern = os.path.join(script_dir, '*.wav')
+
+    audio_files = glob.glob(m4a_pattern) + glob.glob(wav_pattern)
 
     for audio_filepath in audio_files:
         try:
             signal, fs = librosa.load(audio_filepath, sr=None, mono=True)
         except Exception as e:
-            print(f"  Could not load file {audio_filepath}. Error: {e}")
+            print(f"Could not load file {audio_filepath}. Error: {e}")
             continue
             
         N = len(signal)
-        print(N)
-        window_size = 1024 
+        window_size = 1024
         overlap = window_size // 2
         step = window_size - overlap
+        
         num_frames = 1 + (N - window_size) // step
         
         spectrogram_matrix = []
         for i in range(num_frames):
             frame = signal[i*step : i*step + window_size]
             windowed_frame = frame * np.hanning(window_size)
-            
             fft_result = np.fft.fft(windowed_frame)
-            
             fft_magnitude = np.abs(fft_result[:window_size // 2])
             spectrogram_matrix.append(fft_magnitude)
 
         spectrogram_matrix = np.array(spectrogram_matrix).T
-        
         spectrogram_matrix[spectrogram_matrix == 0] = 1e-10
-        
         db_spectrogram = 20 * np.log10(spectrogram_matrix)
         
         fig, ax = plt.subplots(figsize=(10, 6))
-        
         time_axis = np.arange(num_frames) * step / fs
         freq_axis = np.arange(window_size // 2) * fs / window_size
-        
         img = ax.pcolormesh(time_axis, freq_axis, db_spectrogram, shading='gouraud', cmap='viridis')
         
         vowel_name = os.path.splitext(os.path.basename(audio_filepath))[0]
@@ -170,8 +169,8 @@ def solve_ex7():
 if __name__ == "__main__":
     toolkit = SignalToolkit(output_dir='charts/Lab4')
     
-    # solve_ex1(toolkit)
-    # solve_ex2(toolkit)
-    # solve_ex3(toolkit)
+    solve_ex1(toolkit)
+    solve_ex2(toolkit)
+    solve_ex3(toolkit)
     solve_ex6(toolkit) 
-    # solve_ex7()
+    solve_ex7()
