@@ -1,0 +1,30 @@
+(a) The data is sampled hourly. The sampling frequency (Fs) is 1 sample/hour, which is 0.00027778 Hz.
+(b) The dataset contains 18288 hourly samples, covering a total of 18288 hours, which is approximately 762.00 days or 2.09 years.
+(c) The maximum frequency present in the signal (Nyquist frequency) is Fs/2 = 0.00013889 Hz.
+------------------------------
+
+The signal has a DC component (non-zero mean) of 138.96.
+DC component removed by subtracting the mean from the signal.
+The 4 principal frequencies are:
+  1. Freq: 0.00000002 Hz (Magnitude: 133.71) -> Period: 18288.00 hours (762.00 days)
+  2. Freq: 0.00000003 Hz (Magnitude: 70.44) -> Period: 9144.00 hours (381.00 days)
+  3. Freq: 0.00001157 Hz (Magnitude: 54.20) -> Period: 24.00 hours (1.00 days)
+  4. Freq: 0.00000005 Hz (Magnitude: 50.44) -> Period: 6096.00 hours (254.00 days)
+ - The frequency around 1.157e-05 Hz corresponds to a 24-hour period (1 day), representing the daily traffic cycle.
+ - The frequency around 2.315e-05 Hz corresponds to a 12-hour period (0.5 days), representing a semi-daily pattern (e.g., morning and evening rush hours).
+ - The frequency around 1.653e-06 Hz corresponds to a 168-hour period (7 days), representing the weekly traffic cycle.
+ - The other frequencies are likely harmonics of these fundamental frequencies.
+------------------------------
+
+1.  **Identify Weekly Pattern:** The signal has a strong weekly periodicity. We can determine the day of the week by averaging the traffic for each day over several weeks. The two consecutive days with the lowest average traffic would be Saturday and Sunday.
+2.  **Major holidays, such as Christmas (December 25th), typically have a very distinct and sharp drop in traffic.
+    - For example, we could look for the day with the minimum traffic in a window around where we expect Christmas to be (approximately 4 months after the start date of late August).
+3.  **Cross-reference:** By combining the day of the week information from step 1 with the specific date anchor from step 2, we can determine the exact start date. For instance, if we identify December 25th and our weekly analysis shows it's a Tuesday, we can check the calendar for a year where this alignment occurs within our approximate timeframe.
+
+Potential drawbacks:
+ - **Atypical Events:** The method relies on typical traffic patterns. Anomalous events (e.g., major accidents, public events, pandemics) could distort the weekly or yearly averages.
+ - **Holiday Ambiguity:** Some holidays have shifting dates (like Easter), which could be harder to pin down. A fixed-date holiday like Christmas is a more reliable anchor.
+ - **Accuracy:** The accuracy depends on the stability of the traffic patterns. If the patterns change significantly over the two years, the averages might be misleading.
+------------------------------
+
+Signal filtered by removing frequencies above 0.00011574 Hz.
