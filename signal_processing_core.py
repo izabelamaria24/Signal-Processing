@@ -17,15 +17,35 @@ class SignalToolkit:
             os.makedirs(path)
         return path
 
+    def _sanitize_filename(self, name):
+        # Replace Windows-illegal characters: <>:"/\|?*
+        illegal = '<>:"/\\|?*'
+        for ch in illegal:
+            name = name.replace(ch, '_')
+        return name.strip().rstrip('.')
+
     def save_figure(self, fig, name, lab_name=None):
+        safe_name = self._sanitize_filename(name)
         if lab_name:
             folder = self.lab_asset_path(lab_name)
         else:
             folder = self.output_dir
-        png_path = os.path.join(folder, f"{name}.png")
-        pdf_path = os.path.join(folder, f"{name}.pdf")
-        fig.savefig(png_path)
-        fig.savefig(pdf_path)
+        # Absolute paths to avoid any cwd ambiguity on some platforms
+        png_path = os.path.abspath(os.path.join(folder, f"{safe_name}.png"))
+        pdf_path = os.path.abspath(os.path.join(folder, f"{safe_name}.pdf"))
+        try:
+            fig.savefig(png_path)
+            fig.savefig(pdf_path)
+            print(f"Saved figure: {png_path} and {pdf_path}")
+        except OSError as e:
+            # Fallback to a generic safe filename
+            fallback = self._sanitize_filename(f"{safe_name}_figure")
+            png_fallback = os.path.abspath(os.path.join(folder, f"{fallback}.png"))
+            pdf_fallback = os.path.abspath(os.path.join(folder, f"{fallback}.pdf"))
+            fig.savefig(png_fallback)
+            fig.savefig(pdf_fallback)
+            print(f"Saved figure with fallback names due to error ({e}): {png_fallback} and {pdf_fallback}")
+            return png_fallback
         return png_path
 
     def create_fourier_matrix(self, N=8):
@@ -63,6 +83,36 @@ class SignalToolkit:
         if x.ndim != 1:
             raise ValueError('x must be a 1-D array')
         return F.dot(x)
+
+    def _is_power_of_two(self, n):
+        return n > 0 and (n & (n - 1)) == 0
+
+    def _fft_ct(self, x):
+        x = np.asarray(x, dtype=np.complex128)
+        N = x.shape[0]
+        if N <= 1:
+            return x
+        if N % 2 != 0:
+            # Fallback to direct DFT if N is not even (should not happen for power-of-two sizes)
+            n = np.arange(N)
+            k = n.reshape((N, 1))
+            F = np.exp(-2j * np.pi * k * n / N)
+            return F.dot(x)
+        X_even = self._fft_ct(x[::2])
+        X_odd = self._fft_ct(x[1::2])
+        twiddle = np.exp(-2j * np.pi * np.arange(N // 2) / N) * X_odd
+        return np.concatenate([X_even + twiddle[: N // 2], X_even - twiddle[: N // 2]])
+
+    def fft(self, x):
+        """
+        Compute the FFT of a 1-D array using a simple Cooley–Tukey radix-2 algorithm.
+        Requires len(x) to be a power of two.
+        """
+        x = np.asarray(x, dtype=np.complex128)
+        N = x.shape[0]
+        if not self._is_power_of_two(N):
+            raise ValueError('fft requires input length to be a power of two')
+        return self._fft_ct(x)
 
     def plot_fourier_matrix(self, F, lab_name=None):
         N = F.shape[0]
@@ -127,7 +177,7 @@ class SignalToolkit:
                 ax.plot(z.real[-1], z.imag[-1], 'ro')
             ax.set_aspect('equal')
             ax.set_xlabel('Real')
-            ax.set_ylabel('Imaginar')
+            ax.set_ylabel('Imaginary')
             ax.set_title(f'omega = {omega}')
             ax.grid(True)
             lim = amplitude * 1.1

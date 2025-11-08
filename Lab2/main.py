@@ -2,7 +2,6 @@ import os
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
-import sounddevice as sd
 from scipy.io import wavfile
 
 repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -14,7 +13,12 @@ from signal_processing_core import SignalToolkit, SignalType
 
 tool = SignalToolkit()
 
-SKIP_AUDIO = os.getenv('SKIP_AUDIO', '0').lower() in ('1', 'true', 'yes')
+SKIP_AUDIO = os.getenv('SKIP_AUDIO', '1').lower() in ('1', 'true', 'yes')
+
+try:
+    import sounddevice as sd  # type: ignore
+except Exception:
+    sd = None
 
 
 def ensure_lab_dir():
@@ -27,7 +31,7 @@ def generate_signal_data(signal_type, freq, amplitude=1.0, phase=0.0, duration=N
 
 
 def play_audio_from_array(x, sampling_freq):
-    if SKIP_AUDIO:
+    if SKIP_AUDIO or sd is None:
         print("SKIP_AUDIO enabled — skipping playback")
         return
     if np.max(np.abs(x)) == 0:
@@ -74,7 +78,7 @@ def ex1():
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     tool.save_figure(fig, 'ex1_sine_cosine', lab_name='Lab2')
-    plt.close(fig)
+    plt.show()
 
 
 def ex2():
@@ -94,7 +98,7 @@ def ex2():
     ax.legend()
     ax.grid(True)
     tool.save_figure(fig, 'ex2a_phases', lab_name='Lab2')
-    plt.close(fig)
+    plt.show()
 
     t_orig, x_orig = generate_signal_data(SignalType.SINE, freq, amplitude=amp, phase=phases[0], duration=duration)
     snr_values = [100, 10, 1, 0.1]
@@ -118,7 +122,7 @@ def ex2():
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.96])
     tool.save_figure(fig, 'ex2b_snr', lab_name='Lab2')
-    plt.close(fig)
+    plt.show()
 
 
 def ex3():
@@ -226,7 +230,7 @@ def ex7():
     ax.legend()
     ax.grid(True)
     tool.save_figure(fig, 'ex7a_decimation', lab_name='Lab2')
-    plt.close(fig)
+    plt.show()
 
     decimated_data_2 = x[1::4]
     decimated_time_2 = original_time[1::4]
@@ -238,7 +242,7 @@ def ex7():
     ax.legend()
     ax.grid(True)
     tool.save_figure(fig, 'ex7b_decimation_phase', lab_name='Lab2')
-    plt.close(fig)
+    plt.show()
 
 
 def ex8():
@@ -258,7 +262,7 @@ def ex8():
     plt.grid(True)
     plt.legend()
     tool.save_figure(fig, 'ex8a_approximations', lab_name='Lab2')
-    plt.close(fig)
+    plt.show()
 
     error_taylor = np.abs(y_true - y_taylor)
     error_pade = np.abs(y_true - y_pade)
@@ -283,17 +287,20 @@ def ex8():
 
     plt.tight_layout()
     tool.save_figure(fig, 'ex8b_errors', lab_name='Lab2')
-    plt.close(fig)
+    plt.show()
 
 
-if __name__ == '__main__':
+def run():
     ensure_lab_dir()
     ex1()
     ex2()
-    ex3()  
+    ex3()
     ex4()
-    ex5()  
+    ex5()
     ex6()
     ex7()
     ex8()
 
+
+if __name__ == '__main__':
+    run()

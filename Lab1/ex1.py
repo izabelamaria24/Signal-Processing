@@ -54,6 +54,10 @@ def sample_time_series():
     plt.show()
 
 
-if __name__ == '__main__':
+def run():
     construct_signals_and_plot()
     sample_time_series()
+
+
+if __name__ == '__main__':
+    run()

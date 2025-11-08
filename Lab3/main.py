@@ -8,7 +8,7 @@ class FourierTransform:
     def __init__(self):
         self.tool = SignalToolkit()
 
-    def solve_exercise_1(self, N=20):
+    def solve_exercise_1(self, N=8):
         F = self.tool.create_fourier_matrix(N)
         self.tool.plot_fourier_matrix(F, lab_name='Lab3')
 
@@ -45,6 +45,7 @@ class FourierTransform:
         fig_complex.colorbar(scatter, ax=ax2, label='Distance from origin (|x[n]|)')
         self.tool.save_figure(fig1, 'exercise_2_figure_1_time', lab_name='Lab3')
         self.tool.save_figure(fig_complex, 'exercise_2_figure_1_complex', lab_name='Lab3')
+        plt.show()
 
         wrapping_frequencies = [2, 5, signal_freq, 15]
 
@@ -121,6 +122,10 @@ class FourierTransform:
         self.solve_exercise_3()
 
 
-if __name__ == '__main__':
+def run():
     lab = FourierTransform()
     lab.run_all_exercises()
+
+
+if __name__ == '__main__':
+    run()
