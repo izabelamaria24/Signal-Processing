@@ -3,7 +3,10 @@ import matplotlib.pyplot as plt
 import os
 import time
 import glob
-import librosa
+try:
+    import librosa 
+except Exception:
+    librosa = None
 
 from signal_processing_core import SignalToolkit
 
@@ -12,23 +15,34 @@ LAB_NAME = "Lab4"
 def solve_ex1(toolkit):
     vector_sizes = [128, 256, 512, 1024, 2048, 4096, 8192]
     my_dft_times = []
+    my_fft_times = []
     numpy_fft_times = []
+
+    def time_call(callable_fn, repeats=3):
+        import time as _t
+        best = float('inf')
+        for _ in range(repeats):
+            start = _t.perf_counter()
+            callable_fn()
+            elapsed = _t.perf_counter() - start
+            if elapsed < best:
+                best = elapsed
+        return max(best, 1e-9)
 
     for N in vector_sizes:
         print(f"Testing for N = {N}...")
         x = np.random.rand(N) + 1j * np.random.rand(N)
 
         F = toolkit.create_fourier_matrix(N)
-        start_time = time.time()
-        toolkit.apply_fourier_matrix(F, x)
-        my_dft_times.append(time.time() - start_time)
+        my_dft_times.append(time_call(lambda: toolkit.apply_fourier_matrix(F, x), repeats=1))
 
-        start_time = time.time()
-        np.fft.fft(x)
-        numpy_fft_times.append(time.time() - start_time)
+        my_fft_times.append(time_call(lambda: toolkit.fft(x), repeats=3))
+
+        numpy_fft_times.append(time_call(lambda: np.fft.fft(x), repeats=3))
 
     fig, ax = plt.subplots(figsize=(10, 6))
     ax.plot(vector_sizes, my_dft_times, 'o-', label='Custom Implementation (DFT Matrix O(N^2))')
+    ax.plot(vector_sizes, my_fft_times, '^-', label='Custom Implementation (FFT O(N log N))')
     ax.plot(vector_sizes, numpy_fft_times, 's-', label='numpy.fft.fft (FFT O(N log N))')
     ax.set_xlabel('Vector Size (N)')
     ax.set_ylabel('Execution Time (s)')
@@ -39,6 +53,7 @@ def solve_ex1(toolkit):
     ax.grid(True, which="both", ls="--")
     
     toolkit.save_figure(fig, "ex1_time_comparison", lab_name=LAB_NAME)
+    plt.show()
 
 
 def solve_ex2(toolkit):
@@ -74,6 +89,7 @@ def solve_ex2(toolkit):
     
     toolkit.save_figure(fig, "ex2_aliasing", lab_name=LAB_NAME)
     print(f"Three sinusoids ({f0}Hz, {abs(f_alias1)}Hz, {f_alias2}Hz) produce the same samples at fs={fs_sample}Hz.\n")
+    plt.show()
 
 
 def solve_ex3(toolkit):
@@ -107,9 +123,14 @@ def solve_ex3(toolkit):
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
     
     toolkit.save_figure(fig, "ex3_correct_sampling", lab_name=LAB_NAME)
+    print(f"With fs={fs_sample}Hz (> 2*f0), the {f0}Hz signal is uniquely represented by the samples; {f_alias1}Hz and {f_alias2}Hz do not match the samples (no alias).")
+    plt.show()
 
 
 def solve_ex6(toolkit):
+    if librosa is None:
+        print("librosa not installed or unavailable — skipping spectrograms in ex6.")
+        return
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
     m4a_pattern = os.path.join(script_dir, '*.m4a')
@@ -155,6 +176,7 @@ def solve_ex6(toolkit):
         fig.colorbar(img, ax=ax, format='%+2.0f dB', label='Magnitude (dB)')
         
         toolkit.save_figure(fig, f"ex6_spectrogram_{vowel_name}", lab_name=LAB_NAME)
+        plt.show()
 
 
 def solve_ex7():
@@ -166,11 +188,14 @@ def solve_ex7():
     print(f"P_noise_dB = {P_signal_dB} dB - {SNR_dB} dB = {P_noise_dB} dB.\n")
 
 
-if __name__ == "__main__":
-    toolkit = SignalToolkit(output_dir='charts/Lab4')
-    
+def run():
+    toolkit = SignalToolkit()
     solve_ex1(toolkit)
     solve_ex2(toolkit)
     solve_ex3(toolkit)
-    solve_ex6(toolkit) 
+    solve_ex6(toolkit)
     solve_ex7()
+
+
+if __name__ == "__main__":
+    run()

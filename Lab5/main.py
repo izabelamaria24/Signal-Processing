@@ -1,10 +1,17 @@
 import csv
 import numpy as np
-import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 import os
+try:
+    import pandas as pd 
+except Exception:
+    pd = None
+
+from signal_processing_core import SignalToolkit
+
+LAB_NAME = 'Lab5'
+tool = SignalToolkit()
 
 plt.style.use('seaborn-v0_8-whitegrid')
 
@@ -24,21 +31,35 @@ def load_data(filename="Train.csv"):
             counts.append(float(row[2]))
     return np.array(counts)
 
+def load_dataframe(filename="Train.csv"):
+    if pd is not None:
+        df = pd.read_csv(filename)
+        df['Datetime'] = pd.to_datetime(df['Datetime'], format='%d-%m-%Y %H:%M')
+        return df[['Datetime', 'Count']]
+
+    datetimes = []
+    counts = []
+    with open(filename, 'r') as f:
+        reader = csv.reader(f)
+        header = next(reader, None)
+        for row in reader:
+            dt = datetime.strptime(row[1], "%d-%m-%Y %H:%M")
+            datetimes.append(dt)
+            counts.append(float(row[2]))
+    return (np.array(datetimes, dtype='datetime64[m]'), np.array(counts, dtype=float))
+
 
 def solve_a_b_c(data, sampling_period_hours=1):
-    # a)
     sampling_period_seconds = sampling_period_hours * 3600
     Fs = 1 / sampling_period_seconds
     print(f"(a) The data is sampled hourly. The sampling frequency (Fs) is 1 sample/hour, which is {Fs:.8f} Hz.")
 
-    # b)
     num_samples = len(data)
     duration_hours = num_samples * sampling_period_hours
     duration_days = duration_hours / 24
     duration_years = duration_days / 365.25
     print(f"(b) The dataset contains {num_samples} hourly samples, covering a total of {duration_hours} hours, which is approximately {duration_days:.2f} days or {duration_years:.2f} years.")
 
-    # c)
     nyquist_freq = Fs / 2
     print(f"(c) The maximum frequency present in the signal (Nyquist frequency) is Fs/2 = {nyquist_freq:.8f} Hz.")
     print("-" * 30 + "\n")
@@ -46,58 +67,51 @@ def solve_a_b_c(data, sampling_period_hours=1):
 
 def solve_d(data, Fs):
     N = len(data)
-    
-    X = np.fft.fft(data)
-    
-    freqs = np.fft.fftfreq(N, 1/Fs)[:N//2]
-    
-    X_mag = (2.0/N) * np.abs(X[:N//2])
-    
+    freqs = Fs * np.linspace(0, N // 2, N // 2) / N
+    X = np.abs(np.fft.fft(data) / N)[: N // 2]
     fig, ax = plt.subplots(figsize=(12, 6))
-    ax.plot(freqs, X_mag, color=COLORS['raw'])
-    ax.set_title("Fourier Transform of the Traffic Signal")
+    ax.plot(freqs, X, color=COLORS['raw'])
+    ax.set_title("FFT with DC component")
     ax.set_xlabel("Frequency (Hz)")
-    ax.set_ylabel("Magnitude")
-    ax.grid(True)
+    ax.set_ylabel("Amplitude")
+    ax.set_yscale("log")
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
     plt.tight_layout()
-    plt.savefig("exercise_d_fft.png")
-    return freqs, X_mag
+    tool.save_figure(fig, "exercise_d_fft", lab_name=LAB_NAME)
+    plt.show()
+    return freqs, X
 
 
 def solve_e(data, Fs):
-    dc_component = np.mean(data)
-    print(f"The signal has a DC component (non-zero mean) of {dc_component:.2f}.")
-    
-    data_no_dc = data - dc_component
-    print("DC component removed by subtracting the mean from the signal.")
-    
-    N = len(data_no_dc)
-    X = np.fft.fft(data_no_dc)
-    freqs = np.fft.fftfreq(N, 1/Fs)[:N//2]
-    X_mag = (2.0/N) * np.abs(X[:N//2])
+    N = len(data)
+    freqs = Fs * np.linspace(0, N // 2, N // 2) / N
+    X = np.abs(np.fft.fft(data) / N)[: N // 2].copy()
+    dc_component = X[0]
+    print(f"The signal has a DC component (non-zero mean) of ~{dc_component:.2f} (FFT bin at 0 Hz).")
+    X[0] = 0.0
 
     fig, ax = plt.subplots(figsize=(12, 6))
-    ax.plot(freqs, X_mag, color=COLORS['dc_removed'])
-    ax.set_title("Fourier Transform after DC Component Removal")
+    ax.plot(freqs, X, color=COLORS['dc_removed'])
+    ax.set_title("FFT without the DC component")
     ax.set_xlabel("Frequency (Hz)")
-    ax.set_ylabel("Magnitude")
-    ax.grid(True)
+    ax.set_ylabel("Amplitude")
+    ax.set_yscale("log")
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
     plt.tight_layout()
-    plt.savefig("exercise_e_fft_no_dc.png")
+    tool.save_figure(fig, "exercise_e_fft_no_dc", lab_name=LAB_NAME)
+    plt.show()
 
 
 def solve_f(freqs, X_mag):
     top_4_indices = np.argsort(X_mag)[::-1][:4]
-    
     top_4_freqs = freqs[top_4_indices]
     top_4_mags = X_mag[top_4_indices]
 
     print("The 4 principal frequencies are:")
     for i in range(4):
         freq_hz = top_4_freqs[i]
-        period_hours = 1 / (freq_hz * 3600)
-        period_days = period_hours / 24
-        
+        period_hours = 1 / (freq_hz * 3600) if freq_hz != 0 else float('inf')
+        period_days = period_hours / 24 if period_hours != float('inf') else float('inf')
         print(f"  {i+1}. Freq: {freq_hz:.8f} Hz (Magnitude: {top_4_mags[i]:.2f}) -> Period: {period_hours:.2f} hours ({period_days:.2f} days)")
 
     print(" - The frequency around 1.157e-05 Hz corresponds to a 24-hour period (1 day), representing the daily traffic cycle.")
@@ -107,91 +121,88 @@ def solve_f(freqs, X_mag):
     print("-" * 30 + "\n")
 
 
-def solve_g(data):
-    start_day_index = 44
-    start_sample_index = start_day_index * 24 # 1056
-    
-    num_days_to_plot = 30
-    end_sample_index = start_sample_index + num_days_to_plot * 24
-    
-    data_slice = data[start_sample_index:end_sample_index]
-    time_axis_days = np.arange(len(data_slice)) / 24.0
-    
-    fig, ax = plt.subplots(figsize=(15, 6))
-    ax.plot(time_axis_days, data_slice, label="Hourly Traffic Count", color=COLORS['raw'])
-    
-    for i in range(1, num_days_to_plot // 7 + 1):
-        ax.axvline(x=i*7, color='gray', linestyle='--', linewidth=1)
-        
-    ax.set_title(f"One Month of Traffic Data (Starting from Day {start_day_index})")
-    ax.set_xlabel("Time (Days)")
+def solve_g(df_or_tuple):
+    start_dt = datetime(2013, 4, 1, 0, 0, 0)
+    end_dt = datetime(2013, 5, 1, 0, 0, 0)
+
+    if pd is not None and not isinstance(df_or_tuple, tuple):
+        df = df_or_tuple
+        mask = (df['Datetime'] >= start_dt) & (df['Datetime'] < end_dt)
+        series = df.loc[mask, 'Count'].to_numpy()
+    else:
+        datetimes_np, counts_np = df_or_tuple
+        dtn = np.array([np.datetime64(start_dt), np.datetime64(end_dt)])
+        mask = (datetimes_np >= dtn[0]) & (datetimes_np < dtn[1])
+        series = counts_np[mask]
+
+    fig, ax = plt.subplots(figsize=(12, 6))
+    ax.plot(series, label="Hourly Traffic Count", color=COLORS['raw'])
+    ax.set_title("April 2013 — Hourly Traffic")
+    ax.set_xlabel("Hour index within April")
     ax.set_ylabel("Number of Cars")
     ax.legend()
     ax.grid(True, which='both', linestyle='--', linewidth=0.5)
     plt.tight_layout()
-    plt.savefig("exercise_g_monthly_traffic.png")
+    tool.save_figure(fig, "exercise_g_april_2013", lab_name=LAB_NAME)
+    plt.show()
 
 
 def solve_h(data):
-    print("1.  **Identify Weekly Pattern:** The signal has a strong weekly periodicity. We can determine the day of the week by averaging the traffic for each day over several weeks. The two consecutive days with the lowest average traffic would be Saturday and Sunday.")
-    print("2.  **Major holidays, such as Christmas (December 25th), typically have a very distinct and sharp drop in traffic.")
-    print("    - For example, we could look for the day with the minimum traffic in a window around where we expect Christmas to be (approximately 4 months after the start date of late August).")
-    print("3.  **Cross-reference:** By combining the day of the week information from step 1 with the specific date anchor from step 2, we can determine the exact start date. For instance, if we identify December 25th and our weekly analysis shows it's a Tuesday, we can check the calendar for a year where this alignment occurs within our approximate timeframe.")
-    
-    print("\nPotential drawbacks:")
-    print(" - **Atypical Events:** The method relies on typical traffic patterns. Anomalous events (e.g., major accidents, public events, pandemics) could distort the weekly or yearly averages.")
-    print(" - **Holiday Ambiguity:** Some holidays have shifting dates (like Easter), which could be harder to pin down. A fixed-date holiday like Christmas is a more reliable anchor.")
-    print(" - **Accuracy:** The accuracy depends on the stability of the traffic patterns. If the patterns change significantly over the two years, the averages might be misleading.")
-    print("-" * 30 + "\n")
+    pass
 
 
 def solve_i(data, Fs):
-    start_index = 1056
-    data_slice = data[start_index : start_index + 30*24]
-    time_axis_days = np.arange(len(data_slice)) / 24.0
+    N = len(data)
+    freqs = Fs * np.linspace(0, N // 2, N // 2) / N
+    X = np.abs(np.fft.fft(data) / N)[: N // 2].copy()
+    X[0] = 0.0 
 
-    N = len(data_slice)
-    X_slice = np.fft.fft(data_slice)
-    freqs_slice = np.fft.fftfreq(N, 1/Fs)
-    
-    f_daily = 1 / (24 * 3600)
-    cutoff_frequency = 10 * f_daily 
-    
-    X_filtered = X_slice.copy()
-    X_filtered[np.abs(freqs_slice) > cutoff_frequency] = 0
-    
-    x_filtered = np.fft.ifft(X_filtered)
-    print(f"Signal filtered by removing frequencies above {cutoff_frequency:.8f} Hz.")
-    
-    fig, ax = plt.subplots(figsize=(15, 6))
-    ax.plot(time_axis_days, data_slice, label='Original Signal', color=COLORS['raw'], alpha=0.6)
-    ax.plot(time_axis_days, x_filtered.real, label=f'Filtered Signal (cutoff={cutoff_frequency:.2e} Hz)', color=COLORS['filtered'], linewidth=2)
-    ax.set_title("Original vs. Low-Pass Filtered Traffic Signal")
-    ax.set_xlabel("Time (Days)")
-    ax.set_ylabel("Number of Cars")
-    ax.legend()
+    cutoff = 1.0 / (7 * 24 * 3600)
+    mask = freqs < cutoff
+
+    fig, ax = plt.subplots(figsize=(12, 6))
+    container = ax.stem(freqs[mask], X[mask])
+    try:
+        container.markerline.set_markerfacecolor('none')
+        baseline = container.baseline
+    except Exception:
+        try:
+            markerline, stemlines, baseline = container
+            markerline.set_markerfacecolor('none')
+        except Exception:
+            baseline = None
+    ax.set_title("Low-frequency spectrum (periods ≥ 1 week)")
+    ax.set_xlabel("Frequency (Hz)")
+    ax.set_ylabel("Amplitude")
+    ax.set_ylim(bottom=0)
+    ax.set_xlim(left=0)
+    if baseline is not None:
+        plt.setp(baseline, linewidth=0)
     ax.grid(True, which='both', linestyle='--', linewidth=0.5)
     plt.tight_layout()
-    plt.savefig("exercise_i_filtered_signal.png")
+    tool.save_figure(fig, "exercise_i_low_freq_spectrum", lab_name=LAB_NAME)
+    plt.show()
+
+
+def run():
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(script_dir, "Train.csv")
+    df_or_tuple = load_dataframe(file_path)
+    if pd is not None and not isinstance(df_or_tuple, tuple):
+        traffic_data = df_or_tuple['Count'].to_numpy()
+    else:
+        _, counts_np = df_or_tuple
+        traffic_data = counts_np
+
+    FS = 1.0 / 3600.0
+    solve_a_b_c(traffic_data)
+    freqs, X_mag = solve_d(traffic_data, FS)
+    solve_e(traffic_data, FS)
+    solve_f(freqs[1:], X_mag[1:])
+    solve_g(df_or_tuple)
+    solve_h(traffic_data)
+    solve_i(traffic_data, FS)
 
 
 if __name__ == "__main__":
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    file_path = os.path.join(script_dir, "Train.csv")
-    traffic_data = load_data(file_path)
-    
-    FS = 1.0 / 3600.0 
-
-    solve_a_b_c(traffic_data)
-    
-    freqs, X_mag = solve_d(traffic_data, FS)
-    
-    solve_e(traffic_data, FS)
-    
-    solve_f(freqs[1:], X_mag[1:]) 
-    
-    solve_g(traffic_data)
-    
-    solve_h(traffic_data)
-    
-    solve_i(traffic_data, FS)
+    run()
