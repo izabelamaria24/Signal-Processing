@@ -18,7 +18,6 @@ class SignalToolkit:
         return path
 
     def _sanitize_filename(self, name):
-        # Replace Windows-illegal characters: <>:"/\|?*
         illegal = '<>:"/\\|?*'
         for ch in illegal:
             name = name.replace(ch, '_')
@@ -30,7 +29,6 @@ class SignalToolkit:
             folder = self.lab_asset_path(lab_name)
         else:
             folder = self.output_dir
-        # Absolute paths to avoid any cwd ambiguity on some platforms
         png_path = os.path.abspath(os.path.join(folder, f"{safe_name}.png"))
         pdf_path = os.path.abspath(os.path.join(folder, f"{safe_name}.pdf"))
         try:
@@ -38,7 +36,6 @@ class SignalToolkit:
             fig.savefig(pdf_path)
             print(f"Saved figure: {png_path} and {pdf_path}")
         except OSError as e:
-            # Fallback to a generic safe filename
             fallback = self._sanitize_filename(f"{safe_name}_figure")
             png_fallback = os.path.abspath(os.path.join(folder, f"{fallback}.png"))
             pdf_fallback = os.path.abspath(os.path.join(folder, f"{fallback}.pdf"))
@@ -93,7 +90,6 @@ class SignalToolkit:
         if N <= 1:
             return x
         if N % 2 != 0:
-            # Fallback to direct DFT if N is not even (should not happen for power-of-two sizes)
             n = np.arange(N)
             k = n.reshape((N, 1))
             F = np.exp(-2j * np.pi * k * n / N)
@@ -104,10 +100,6 @@ class SignalToolkit:
         return np.concatenate([X_even + twiddle[: N // 2], X_even - twiddle[: N // 2]])
 
     def fft(self, x):
-        """
-        Compute the FFT of a 1-D array using a simple Cooley–Tukey radix-2 algorithm.
-        Requires len(x) to be a power of two.
-        """
         x = np.asarray(x, dtype=np.complex128)
         N = x.shape[0]
         if not self._is_power_of_two(N):
