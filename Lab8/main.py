@@ -1,5 +1,6 @@
 import numpy as np
 from matplotlib import pyplot as plt
+from sklearn.metrics import mean_squared_error
 
 from signal_processing_core import SignalToolkit
 
@@ -111,13 +112,78 @@ def solve3():
     tool.save_figure(fig, f'ex3-AR', lab_name=LAB_NAME)
 
 
+def ar_predict_one_step(train_data, p):
+    y = train_data[p:]
+    m = len(y)
+    Y = np.zeros((m, p))
+    for i in range(p):
+        Y[:, i] = train_data[i:i + m]
+    
+    try:
+        big_gamma = Y.T @ Y
+        small_gamma = Y.T @ y
+        x_star = np.linalg.inv(big_gamma) @ small_gamma
+    except np.linalg.LinAlgError:
+        return None
+
+    last_p = train_data[-p:]
+    prediction = x_star @ last_p
+    return prediction
+
+
 def solve4():
-    pass
+    trend, season, noise = generate_time_series()
+    time_series = trend + season + noise
+    
+    train_size = int(len(time_series) * 0.8)
+    train_data, validation_data = time_series[:train_size], time_series[train_size:]
+    
+    p_values = range(1, 151)  
+    errors = []
+
+    for p in p_values:
+        predictions = []
+        history = list(train_data)
+        
+        for t in range(len(validation_data)):
+            pred = ar_predict_one_step(np.array(history), p)
+            if pred is not None:
+                predictions.append(pred)
+                history.append(validation_data[t])
+            else:
+                predictions = []
+                break
+        
+        if len(predictions) == len(validation_data):
+            error = mean_squared_error(validation_data, predictions)
+            errors.append(error)
+        else:
+            errors.append(np.inf)
+
+    best_p_index = np.argmin(errors)
+    best_p = p_values[best_p_index]
+    min_error = errors[best_p_index]
+    
+    print(f"Best p = {best_p} cu MSE: {min_error}")
+    
+    fig, ax = plt.subplots()
+    ax.plot(p_values, errors)
+    ax.set_xlabel("p ")
+    ax.set_ylabel("MSE")
+    ax.set_title("Hyperparameter tunning")
+    ax.axvline(x=best_p, color='r', linestyle='--', label=f'Cel mai bun p = {best_p}')
+    ax.legend()
+    plt.tight_layout()
+    plt.show()
+    
+    tool.save_figure(fig, 'ex4-hyperparameter-tuning', lab_name=LAB_NAME)
+
 
 def run():
-    # solve1()
-    # solve2()
+    solve1()
+    solve2()
     solve3()
+    solve4();
 
 if __name__ == "__main__":
     run()
