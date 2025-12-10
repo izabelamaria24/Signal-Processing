@@ -10,6 +10,15 @@ class SignalToolkit:
         self.output_dir = output_dir
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
+            
+    def generate_time_series(self):
+        N = 1000
+        t = np.linspace(0, 1, N)
+        trend = t ** 2 + 1
+        season = np.sin(2 * 20 * np.pi * t) + np.sin(3 * 15 * np.pi * t)
+        noise = np.random.normal(0, 0.2, N)
+        
+        return trend, season, noise
 
     def lab_asset_path(self, lab_name):
         path = os.path.join(self.output_dir, lab_name)

@@ -183,7 +183,7 @@ def run():
     solve1()
     solve2()
     solve3()
-    solve4();
+    solve4()
 
 if __name__ == "__main__":
     run()
