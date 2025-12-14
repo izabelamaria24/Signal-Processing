@@ -9,6 +9,7 @@ from Lab5 import run as run_lab5
 from Lab6 import run as run_lab6
 from Lab7 import run as run_lab7
 from Lab8 import run as run_lab8
+from Lab9 import run as run_lab9
 from Lab10 import run as run_lab10
 
 def run_one(lab_number: int):
@@ -28,6 +29,8 @@ def run_one(lab_number: int):
         run_lab7()
     elif lab_number == 8:
         run_lab8()
+    elif lab_number == 9:
+        run_lab9()
     elif lab_number == 10:
         run_lab10()
     else:
